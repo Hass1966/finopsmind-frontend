@@ -1,3 +1,4 @@
+// Matches backend UserInfo struct
 export interface User {
   id: string;
   organization_id: string;
@@ -5,9 +6,6 @@ export interface User {
   first_name: string;
   last_name: string;
   role: 'admin' | 'editor' | 'viewer';
-  active: boolean;
-  last_login_at: string | null;
-  created_at: string;
 }
 
 export interface LoginRequest {
@@ -28,17 +26,24 @@ export interface AuthResponse {
   user: User;
 }
 
+// Matches backend CostSummary struct
 export interface CostSummary {
-  total: number;
-  previous_total: number;
-  change_pct: number;
+  total_cost: number;
   currency: string;
-  by_service: Record<string, number>;
-  by_provider: Record<string, number>;
-  period_start: string;
-  period_end: string;
+  start_date: string;
+  end_date: string;
+  by_service: CostBreakdownItem[];
+  previous_period_cost: number | null;
+  change_pct: number | null;
 }
 
+export interface CostBreakdownItem {
+  name: string;
+  amount: number;
+  percentage: number;
+}
+
+// After unwrapping in api.ts, trend data arrives as CostDataPoint[]
 export interface CostTrend {
   date: string;
   amount: number;
@@ -46,9 +51,9 @@ export interface CostTrend {
   service?: string;
 }
 
+// After unwrapping in api.ts, breakdown data arrives as CostBreakdownItem[]
 export interface CostBreakdown {
-  dimension: string;
-  value: string;
+  name: string;
   amount: number;
   percentage: number;
 }
@@ -93,10 +98,10 @@ export interface Anomaly {
   score: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
   status: string;
-  provider: string | null;
-  service: string | null;
-  account_id: string | null;
-  region: string | null;
+  provider: string;
+  service: string;
+  account_id: string;
+  region: string;
   root_cause: string | null;
   notes: string | null;
   detected_at: string;
@@ -104,21 +109,30 @@ export interface Anomaly {
   resolved_at: string | null;
 }
 
+// Matches backend AnomalySummary struct
 export interface AnomalySummary {
   total: number;
-  by_status: Record<string, number>;
-  by_severity: Record<string, number>;
+  open: number;
+  acknowledged: number;
+  resolved: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  total_impact: number;
+  currency: string;
 }
 
+// Matches backend Recommendation struct (rec_type serialized as "type")
 export interface Recommendation {
   id: string;
   organization_id: string;
-  recommendation_type: string;
+  rec_type: string;
   provider: string;
-  account_id: string | null;
-  region: string | null;
-  resource_id: string | null;
-  resource_type: string | null;
+  account_id: string;
+  region: string;
+  resource_id: string;
+  resource_type: string;
   current_config: Record<string, unknown>;
   recommended_config: Record<string, unknown>;
   estimated_savings: string;
@@ -136,11 +150,17 @@ export interface Recommendation {
   created_at: string;
 }
 
+// Matches backend RecommendationSummary struct
 export interface RecommendationSummary {
-  total: number;
+  total_count: number;
+  pending_count: number;
+  implemented_count: number;
+  dismissed_count: number;
   total_savings: number;
-  by_status: Record<string, number>;
+  implemented_savings: number;
   by_type: Record<string, number>;
+  by_impact: Record<string, number>;
+  currency: string;
 }
 
 export interface Forecast {
@@ -187,10 +207,10 @@ export interface RemediationAction {
   action_type: string;
   status: string;
   provider: string;
-  account_id: string | null;
-  region: string | null;
-  resource_id: string | null;
-  resource_type: string | null;
+  account_id: string;
+  region: string;
+  resource_id: string;
+  resource_type: string;
   description: string;
   current_state: Record<string, unknown>;
   desired_state: Record<string, unknown>;
@@ -207,10 +227,17 @@ export interface RemediationAction {
   created_at: string;
 }
 
+// Matches backend RemediationSummary struct
 export interface RemediationSummary {
   total: number;
-  by_status: Record<string, number>;
-  total_savings: number;
+  pending_approval: number;
+  approved: number;
+  executing: number;
+  completed: number;
+  failed: number;
+  total_estimated_savings: number;
+  total_realized_savings: number;
+  currency: string;
 }
 
 export interface Policy {
@@ -235,10 +262,10 @@ export interface PolicyViolation {
   policy_name: string;
   status: string;
   provider: string;
-  account_id: string | null;
-  region: string | null;
-  resource_id: string | null;
-  resource_type: string | null;
+  account_id: string;
+  region: string;
+  resource_id: string;
+  resource_type: string;
   description: string;
   severity: string;
   detected_at: string;
@@ -290,9 +317,11 @@ export interface AutoApprovalRule {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  total: number;
-  page: number;
-  per_page: number;
+  pagination: {
+    page: number;
+    page_size: number;
+    total: number;
+  };
 }
 
 export interface WsMessage {

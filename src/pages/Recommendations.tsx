@@ -21,7 +21,7 @@ const RECOMMENDATION_TYPES = [
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
-  { value: 'open', label: 'Open' },
+  { value: 'pending', label: 'Pending' },
   { value: 'accepted', label: 'Accepted' },
   { value: 'dismissed', label: 'Dismissed' },
   { value: 'implemented', label: 'Implemented' },
@@ -153,7 +153,7 @@ export default function Recommendations() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-sm font-medium text-gray-500">Total Recommendations</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{summary.total}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{summary.total_count}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <p className="text-sm font-medium text-gray-500">Potential Savings</p>
@@ -162,26 +162,20 @@ export default function Recommendations() {
             </p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm font-medium text-gray-500">Open</p>
+            <p className="text-sm font-medium text-gray-500">Pending</p>
             <p className="text-3xl font-bold text-amber-600 mt-1">
-              {summary.by_status?.open ?? 0}
+              {summary.pending_count}
             </p>
-            <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                Accepted: {summary.by_status?.accepted ?? 0}
-              </span>
-            </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-sm font-medium text-gray-500">Dismissed</p>
-            <p className="text-3xl font-bold text-gray-500 mt-1">
-              {summary.by_status?.dismissed ?? 0}
+            <p className="text-sm font-medium text-gray-500">Implemented</p>
+            <p className="text-3xl font-bold text-green-600 mt-1">
+              {summary.implemented_count}
             </p>
             <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
               <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                Implemented: {summary.by_status?.implemented ?? 0}
+                <span className="w-2 h-2 rounded-full bg-gray-400" />
+                Dismissed: {summary.dismissed_count}
               </span>
             </div>
           </div>
@@ -275,7 +269,7 @@ export default function Recommendations() {
             const effort = indicatorLevel(rec.effort);
             const risk = indicatorLevel(rec.risk);
             const isActioning = actionLoading === rec.id;
-            const isActionable = rec.status === 'open';
+            const isActionable = rec.status === 'pending';
 
             return (
               <div
@@ -291,10 +285,10 @@ export default function Recommendations() {
                         <span
                           className={cn(
                             'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border',
-                            typeBadgeColor(rec.recommendation_type)
+                            typeBadgeColor(rec.rec_type)
                           )}
                         >
-                          {formatTypeLabel(rec.recommendation_type)}
+                          {formatTypeLabel(rec.rec_type)}
                         </span>
                         <span
                           className={cn(

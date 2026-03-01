@@ -154,7 +154,7 @@ export default function Anomalies() {
               </div>
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Critical</span>
             </div>
-            <p className="text-2xl font-bold text-red-600">{summary.by_severity?.critical ?? 0}</p>
+            <p className="text-2xl font-bold text-red-600">{summary.critical}</p>
           </div>
 
           {/* High */}
@@ -165,7 +165,7 @@ export default function Anomalies() {
               </div>
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">High</span>
             </div>
-            <p className="text-2xl font-bold text-orange-600">{summary.by_severity?.high ?? 0}</p>
+            <p className="text-2xl font-bold text-orange-600">{summary.high}</p>
           </div>
 
           {/* Medium */}
@@ -176,7 +176,7 @@ export default function Anomalies() {
               </div>
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Medium</span>
             </div>
-            <p className="text-2xl font-bold text-yellow-600">{summary.by_severity?.medium ?? 0}</p>
+            <p className="text-2xl font-bold text-yellow-600">{summary.medium}</p>
           </div>
 
           {/* Low */}
@@ -187,7 +187,7 @@ export default function Anomalies() {
               </div>
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Low</span>
             </div>
-            <p className="text-2xl font-bold text-blue-600">{summary.by_severity?.low ?? 0}</p>
+            <p className="text-2xl font-bold text-blue-600">{summary.low}</p>
           </div>
         </div>
       )}

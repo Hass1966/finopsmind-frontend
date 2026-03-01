@@ -123,8 +123,8 @@ export default function Remediations() {
     }
   };
 
-  const pendingCount = summary?.by_status?.['pending_approval'] ?? 0;
-  const completedCount = summary?.by_status?.['completed'] ?? 0;
+  const pendingCount = summary?.pending_approval ?? 0;
+  const completedCount = summary?.completed ?? 0;
 
   if (loading) {
     return (
@@ -181,7 +181,7 @@ export default function Remediations() {
         />
         <SummaryCard
           label="Estimated Savings"
-          value={formatCurrency(summary?.total_savings ?? 0)}
+          value={formatCurrency(summary?.total_estimated_savings ?? 0)}
           icon={
             <span className="text-lg leading-none">$</span>
           }

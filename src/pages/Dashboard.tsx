@@ -143,19 +143,14 @@ export default function Dashboard() {
       }, 0) / budgets.length
     : 0;
 
-  const providerData = costSummary
-    ? Object.entries(costSummary.by_provider).map(([key, value]) => ({
-        name: PROVIDER_LABELS[key.toLowerCase()] || key,
-        value,
-        color: PROVIDER_COLORS[key.toLowerCase()] || '#94A3B8',
-      }))
-    : [];
+  // Derive provider data from service breakdown (group by provider if available)
+  // CostSummary doesn't include by_provider, so we leave this empty or derive from by_service
+  const providerData: { name: string; value: number; color: string }[] = [];
 
   const serviceData = costSummary
-    ? Object.entries(costSummary.by_service)
-        .sort(([, a], [, b]) => b - a)
+    ? costSummary.by_service
         .slice(0, 8)
-        .map(([name, amount]) => ({ name, amount }))
+        .map((item) => ({ name: item.name, amount: item.amount }))
     : [];
 
   const trendData = costTrend.map(item => ({
@@ -172,8 +167,8 @@ export default function Dashboard() {
           iconBg="bg-blue-50"
           iconColor="text-blue-600"
           label="Total Cost"
-          value={costSummary ? formatCurrency(costSummary.total, costSummary.currency) : '$--'}
-          change={costSummary?.change_pct}
+          value={costSummary ? formatCurrency(costSummary.total_cost, costSummary.currency) : '$--'}
+          change={costSummary?.change_pct ?? undefined}
           changeLabel="vs last period"
           loading={loading}
         />
