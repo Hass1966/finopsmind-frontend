@@ -10,7 +10,8 @@ import type {
   RemediationAction, RemediationSummary, AutoApprovalRule,
   Policy, PolicyViolation,
   ExecutiveSummary, CostComparison,
-  OrgSettings, ChatResponse, User,
+  OrgSettings, ChatResponse, ChatMessage, PaginatedResponse, User,
+  AiCostSummary, CarbonReport,
 } from '../types/api';
 
 const api = axios.create({ baseURL: '/api/v1' });
@@ -52,6 +53,7 @@ export const getCostBreakdown = (params?: Record<string, string>) => api.get('/c
   ...res,
   data: res.data.items as CostBreakdown[],
 }));
+export const getAiCosts = (params?: Record<string, string>) => api.get<AiCostSummary>('/costs/ai', { params });
 export const exportCosts = (params?: Record<string, string>) => api.get('/costs/export', { params, responseType: 'blob' });
 
 // Budgets — returns plain array
@@ -132,9 +134,77 @@ export const getExecutiveSummary = (params?: Record<string, string>) => api.get<
 export const getCostComparison = (params?: Record<string, string>) => api.get<CostComparison>('/reports/comparison', { params });
 export const exportReportCsv = (params?: Record<string, string>) => api.get('/reports/export/csv', { params, responseType: 'blob' });
 export const exportReportJson = (params?: Record<string, string>) => api.get('/reports/export/json', { params, responseType: 'blob' });
+export const getCarbonReport = (params?: Record<string, string>) => api.get<CarbonReport>('/reports/carbon', { params });
 
 // Chat
 export const sendChat = (message: string) => api.post<ChatResponse>('/chat', { message });
+export const getChatHistory = (params?: { page?: number; page_size?: number }) =>
+  api.get<PaginatedResponse<ChatMessage & { id: string; intent?: string; created_at: string }>>('/chat/history', { params });
+export const clearChatHistory = () => api.delete('/chat/history');
+
+/** Open an SSE stream for chat. Returns an AbortController to cancel. */
+export function streamChat(
+  message: string,
+  onChunk: (text: string) => void,
+  onDone: (response: string, intent: string) => void,
+  onError: (err: string) => void,
+): AbortController {
+  const controller = new AbortController();
+  const token = localStorage.getItem('token');
+
+  fetch('/api/v1/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ message, stream: true }),
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        onError(`Request failed: ${res.status}`);
+        return;
+      }
+
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('text/event-stream')) {
+        const reader = res.body!.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+
+          const lines = buf.split('\n');
+          buf = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data:')) continue;
+            const json = line.slice(5).trim();
+            if (!json) continue;
+            try {
+              const evt = JSON.parse(json);
+              if (evt.type === 'chunk') onChunk(evt.text);
+              else if (evt.type === 'done') onDone(evt.response, evt.intent);
+              else if (evt.type === 'error') onError(evt.message);
+            } catch { /* skip malformed */ }
+          }
+        }
+      } else {
+        // Non-streaming JSON fallback
+        const data = await res.json();
+        onDone(data.response, data.intent);
+      }
+    })
+    .catch((err) => {
+      if (err.name !== 'AbortError') onError(err.message);
+    });
+
+  return controller;
+}
 
 // Settings
 export const getSettings = () => api.get<OrgSettings>('/settings');

@@ -19,7 +19,7 @@ const statusBadge: Record<string, { text: string; classes: string }> = {
 const credentialFields: Record<string, { key: string; label: string; type?: string }[]> = {
   aws: [
     { key: 'access_key_id', label: 'Access Key ID' },
-    { key: 'secret_access_key', label: 'Secret Access Key', type: 'password' },
+    { key: 'secret_key', label: 'Secret Access Key', type: 'password' },
     { key: 'region', label: 'Region' },
   ],
   azure: [

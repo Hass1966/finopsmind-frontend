@@ -340,3 +340,38 @@ export interface ChatResponse {
   intent: string;
   data?: unknown;
 }
+
+export interface AiCostSummary {
+  total_ai_spend: number;
+  currency: string;
+  start_date: string;
+  end_date: string;
+  by_service: CostBreakdown[];
+  trend: Array<{ date: string; amount: number }>;
+  ai_share_pct: number;
+}
+
+export interface RegionCarbon {
+  region: string;
+  spend: number;
+  kwh: number;
+  co2_kg: number;
+  coefficient: number;
+}
+
+export interface CarbonTrendPoint {
+  month: string;
+  co2_kg: number;
+  spend: number;
+}
+
+export interface CarbonReport {
+  total_co2_kg: number;
+  total_kwh: number;
+  total_spend: number;
+  currency: string;
+  start_date: string;
+  end_date: string;
+  by_region: RegionCarbon[];
+  trend: CarbonTrendPoint[];
+}

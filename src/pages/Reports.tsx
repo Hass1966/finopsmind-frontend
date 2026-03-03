@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { FileText, Download, BarChart3, PieChart as PieChartIcon, AlertTriangle, Calendar } from 'lucide-react';
+import { FileText, Download, BarChart3, PieChart as PieChartIcon, AlertTriangle, Calendar, Leaf } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { getExecutiveSummary, getCostComparison, exportReportCsv, exportReportJson } from '../lib/api';
+import { getExecutiveSummary, getCostComparison, getCarbonReport, exportReportCsv, exportReportJson } from '../lib/api';
 import { downloadBlob } from '../lib/utils';
-import type { ExecutiveSummary, CostComparison } from '../types/api';
+import type { ExecutiveSummary, CostComparison, CarbonReport } from '../types/api';
 import { formatCurrency, formatPercent } from '../lib/utils';
 
 type Tab = 'executive' | 'comparison' | 'export';
@@ -17,6 +17,7 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState<Tab>('executive');
   const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummary | null>(null);
   const [comparison, setComparison] = useState<CostComparison | null>(null);
+  const [carbonReport, setCarbonReport] = useState<CarbonReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [comparisonLoading, setComparisonLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,8 +48,12 @@ export default function Reports() {
       setLoading(true);
       setError('');
       try {
-        const res = await getExecutiveSummary();
-        setExecutiveSummary(res.data);
+        const [execRes, carbonRes] = await Promise.all([
+          getExecutiveSummary(),
+          getCarbonReport().catch(() => ({ data: null })),
+        ]);
+        setExecutiveSummary(execRes.data);
+        if (carbonRes.data) setCarbonReport(carbonRes.data);
       } catch {
         setError('Failed to load executive summary.');
       } finally {
@@ -275,6 +280,76 @@ export default function Reports() {
               )}
             </div>
           </div>
+
+          {/* Carbon Footprint Card */}
+          {carbonReport && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                  <Leaf className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Estimated Carbon Footprint</h3>
+                  <p className="text-xs text-slate-400">Based on compute spend and regional grid intensity</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                <div className="bg-emerald-50 rounded-lg p-4">
+                  <p className="text-xs font-medium text-emerald-700 uppercase tracking-wider">Total CO2</p>
+                  <p className="text-2xl font-bold text-emerald-900 mt-1">{carbonReport.total_co2_kg.toFixed(1)} kg</p>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-xs font-medium text-blue-700 uppercase tracking-wider">Energy Consumed</p>
+                  <p className="text-2xl font-bold text-blue-900 mt-1">{carbonReport.total_kwh.toFixed(1)} kWh</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-xs font-medium text-slate-600 uppercase tracking-wider">Compute Spend</p>
+                  <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(carbonReport.total_spend)}</p>
+                </div>
+              </div>
+              {carbonReport.by_region.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">By Region</p>
+                  <div className="space-y-2">
+                    {carbonReport.by_region.slice(0, 6).map(r => {
+                      const maxCo2 = carbonReport.by_region[0]?.co2_kg || 1;
+                      const pct = (r.co2_kg / maxCo2) * 100;
+                      return (
+                        <div key={r.region} className="flex items-center gap-3 text-sm">
+                          <span className="w-28 text-slate-600 font-mono text-xs truncate">{r.region || 'global'}</span>
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="w-20 text-right text-xs text-slate-700 font-medium">{r.co2_kg.toFixed(2)} kg</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {carbonReport.trend.length > 1 && (
+                <div className="mt-4">
+                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Monthly Trend</p>
+                  <div className="flex items-end gap-1 h-16">
+                    {carbonReport.trend.map((t, i) => {
+                      const maxVal = Math.max(...carbonReport.trend.map(p => p.co2_kg), 1);
+                      const h = (t.co2_kg / maxVal) * 100;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                          <div
+                            className="w-full bg-emerald-400 rounded-t"
+                            style={{ height: `${h}%`, minHeight: '2px' }}
+                            title={`${t.month}: ${t.co2_kg.toFixed(2)} kg CO2`}
+                          />
+                          <span className="text-[9px] text-slate-400">{t.month.slice(5)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import {
   DollarSign, AlertTriangle, PiggyBank, Gauge,
-  TrendingUp, TrendingDown, ArrowRight
+  TrendingUp, TrendingDown, ArrowRight, Cpu
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
-  BarChart, Bar,
+  BarChart, Bar, LineChart, Line,
 } from 'recharts';
 import { Link } from 'react-router-dom';
-import { getCostSummary, getCostTrend, getAnomalies, getRecommendationSummary, getBudgets } from '../lib/api';
+import { getCostSummary, getCostTrend, getAnomalies, getRecommendationSummary, getBudgets, getAiCosts } from '../lib/api';
 import { formatCurrency, formatPercent, severityColor, formatDateShort, cn } from '../lib/utils';
-import type { CostSummary, CostTrend, Anomaly, RecommendationSummary, Budget } from '../types/api';
+import type { CostSummary, CostTrend, Anomaly, RecommendationSummary, Budget, AiCostSummary } from '../types/api';
 
 // --- Provider colors ---
 const PROVIDER_COLORS: Record<string, string> = {
@@ -106,23 +106,26 @@ export default function Dashboard() {
   const [anomalies, setAnomalies] = useState<Anomaly[]>([]);
   const [recSummary, setRecSummary] = useState<RecommendationSummary | null>(null);
   const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [aiCosts, setAiCosts] = useState<AiCostSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [summaryRes, trendRes, anomalyRes, recRes, budgetRes] = await Promise.all([
+        const [summaryRes, trendRes, anomalyRes, recRes, budgetRes, aiRes] = await Promise.all([
           getCostSummary(),
           getCostTrend({ granularity: 'daily' }),
           getAnomalies({ per_page: '5' }),
           getRecommendationSummary(),
           getBudgets(),
+          getAiCosts().catch(() => ({ data: null })),
         ]);
         setCostSummary(summaryRes.data);
         setCostTrend(trendRes.data);
         setAnomalies(anomalyRes.data);
         setRecSummary(recRes.data);
         setBudgets(budgetRes.data);
+        if (aiRes.data) setAiCosts(aiRes.data);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -196,6 +199,51 @@ export default function Dashboard() {
           value={loading ? '--' : `${budgetUtilization.toFixed(0)}%`}
           loading={loading}
         />
+      </div>
+
+      {/* --- AI Costs card --- */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+              <Cpu className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-500">AI / GPU Spend</span>
+              {loading ? (
+                <Skeleton className="h-7 w-28 mt-1" />
+              ) : aiCosts && aiCosts.total_ai_spend > 0 ? (
+                <p className="text-xl font-bold text-gray-900">
+                  {formatCurrency(aiCosts.total_ai_spend, aiCosts.currency)}
+                  <span className="ml-2 text-xs font-normal text-gray-400">
+                    ({aiCosts.ai_share_pct.toFixed(1)}% of total)
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-gray-400 mt-1">No AI workloads detected</p>
+              )}
+            </div>
+          </div>
+          {!loading && aiCosts && aiCosts.trend.length > 1 && (
+            <div className="w-32 h-10">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={aiCosts.trend.map(p => ({ d: formatDateShort(p.date), v: p.amount }))}>
+                  <Line type="monotone" dataKey="v" stroke="#7C3AED" strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+        {!loading && aiCosts && aiCosts.by_service.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {aiCosts.by_service.slice(0, 5).map(s => (
+              <span key={s.name} className="inline-flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full">
+                {s.name}
+                <span className="text-purple-400">{formatCurrency(s.amount)}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* --- Charts row --- */}
