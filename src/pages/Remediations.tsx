@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Check, X, RotateCcw, Ban } from 'lucide-react';
+import { Wrench, Check, X, RotateCcw, Ban, GitBranch, ExternalLink } from 'lucide-react';
 import {
   getRemediations,
   getRemediationSummary,
@@ -7,6 +7,7 @@ import {
   rejectRemediation,
   cancelRemediation,
   rollbackRemediation,
+  pushRemediationToPipeline,
 } from '../lib/api';
 import type { RemediationAction, RemediationSummary } from '../types/api';
 import { formatCurrency, statusColor, cn } from '../lib/utils';
@@ -46,6 +47,18 @@ export default function Remediations() {
   const [rejectTarget, setRejectTarget] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectLoading, setRejectLoading] = useState(false);
+
+  // Pipeline modal state
+  const [pipelineTarget, setPipelineTarget] = useState<string | null>(null);
+  const [pipelineForm, setPipelineForm] = useState({
+    github_token: '',
+    repo_owner: '',
+    repo_name: '',
+    base_branch: 'main',
+  });
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [pipelineResult, setPipelineResult] = useState<string | null>(null);
+  const [pipelineError, setPipelineError] = useState('');
 
   const fetchData = async () => {
     try {
@@ -120,6 +133,27 @@ export default function Remediations() {
       await fetchData();
     } finally {
       setActionLoading((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const openPipelineModal = (id: string) => {
+    setPipelineTarget(id);
+    setPipelineForm({ github_token: '', repo_owner: '', repo_name: '', base_branch: 'main' });
+    setPipelineResult(null);
+    setPipelineError('');
+  };
+
+  const handlePushToPipeline = async () => {
+    if (!pipelineTarget) return;
+    setPipelineLoading(true);
+    setPipelineError('');
+    try {
+      const res = await pushRemediationToPipeline(pipelineTarget, pipelineForm);
+      setPipelineResult(res.data.pr_url);
+    } catch {
+      setPipelineError('Failed to push to pipeline. Please check your credentials and try again.');
+    } finally {
+      setPipelineLoading(false);
     }
   };
 
@@ -346,6 +380,14 @@ export default function Remediations() {
                             Rollback
                           </button>
                         )}
+                        <button
+                          onClick={() => openPipelineModal(rem.id)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 transition-colors"
+                          title="Push to Pipeline"
+                        >
+                          <GitBranch className="w-3.5 h-3.5" />
+                          Pipeline
+                        </button>
                         {!['pending_approval', 'executing', 'completed'].includes(rem.status) && (
                           <span className="text-xs text-slate-400 italic">No actions</span>
                         )}
@@ -355,6 +397,142 @@ export default function Remediations() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Push to Pipeline Modal */}
+      {pipelineTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPipelineTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+                  <GitBranch className="w-5 h-5 text-violet-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Push to Pipeline</h3>
+                  <p className="text-xs text-slate-500">Create a PR with this remediation</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPipelineTarget(null)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              {pipelineResult ? (
+                <div className="text-center py-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Check className="w-6 h-6 text-green-600" />
+                  </div>
+                  <h4 className="text-base font-semibold text-slate-900 mb-2">Pull Request Created</h4>
+                  <a
+                    href={pipelineResult}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-800 hover:underline break-all"
+                  >
+                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                    {pipelineResult}
+                  </a>
+                  <div className="mt-5">
+                    <button
+                      onClick={() => setPipelineTarget(null)}
+                      className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {pipelineError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">
+                      {pipelineError}
+                    </div>
+                  )}
+                  <div>
+                    <label htmlFor="pipeline-token" className="block text-sm font-medium text-slate-700 mb-1.5">
+                      GitHub Token
+                    </label>
+                    <input
+                      id="pipeline-token"
+                      type="password"
+                      value={pipelineForm.github_token}
+                      onChange={(e) => setPipelineForm((f) => ({ ...f, github_token: e.target.value }))}
+                      placeholder="ghp_..."
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label htmlFor="pipeline-owner" className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Repo Owner
+                      </label>
+                      <input
+                        id="pipeline-owner"
+                        type="text"
+                        value={pipelineForm.repo_owner}
+                        onChange={(e) => setPipelineForm((f) => ({ ...f, repo_owner: e.target.value }))}
+                        placeholder="my-org"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="pipeline-repo" className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Repo Name
+                      </label>
+                      <input
+                        id="pipeline-repo"
+                        type="text"
+                        value={pipelineForm.repo_name}
+                        onChange={(e) => setPipelineForm((f) => ({ ...f, repo_name: e.target.value }))}
+                        placeholder="infra"
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="pipeline-branch" className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Base Branch
+                    </label>
+                    <input
+                      id="pipeline-branch"
+                      type="text"
+                      value={pipelineForm.base_branch}
+                      onChange={(e) => setPipelineForm((f) => ({ ...f, base_branch: e.target.value }))}
+                      placeholder="main"
+                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setPipelineTarget(null)}
+                      className="px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePushToPipeline}
+                      disabled={pipelineLoading || !pipelineForm.github_token || !pipelineForm.repo_owner || !pipelineForm.repo_name}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {pipelineLoading ? (
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <GitBranch className="w-4 h-4" />
+                      )}
+                      {pipelineLoading ? 'Pushing...' : 'Push'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

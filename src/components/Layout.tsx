@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, DollarSign, AlertTriangle, Lightbulb, TrendingUp,
   Cloud, Shield, FileText, Settings, MessageSquare, Bell, LogOut, Menu,
-  X, ChevronDown, Wrench, BookOpen
+  X, ChevronDown, Wrench, BookOpen, Tag
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -20,6 +20,7 @@ const navItems = [
   { path: '/remediations', icon: Wrench, label: 'Remediations' },
   { path: '/policies', icon: Shield, label: 'Policies' },
   { path: '/reports', icon: FileText, label: 'Reports' },
+  { path: '/allocations', icon: Tag, label: 'Allocations' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
 

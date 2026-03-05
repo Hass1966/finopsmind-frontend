@@ -12,6 +12,7 @@ import Providers from './pages/Providers';
 import Remediations from './pages/Remediations';
 import Policies from './pages/Policies';
 import Reports from './pages/Reports';
+import Allocations from './pages/Allocations';
 import SettingsPage from './pages/SettingsPage';
 import type { ReactNode } from 'react';
 
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/remediations" element={<Remediations />} />
             <Route path="/policies" element={<Policies />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/allocations" element={<Allocations />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>

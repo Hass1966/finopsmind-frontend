@@ -112,7 +112,7 @@ export default function Reports() {
   })) || [];
 
   const providerPieData = executiveSummary
-    ? Object.entries(executiveSummary.cost_by_provider).map(([name, value]) => ({
+    ? Object.entries(executiveSummary.cost_by_provider ?? {}).map(([name, value]) => ({
         name: name.toUpperCase(),
         value,
       }))
@@ -201,11 +201,11 @@ export default function Reports() {
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Budget Utilization</p>
               <p className={`text-xl font-bold mt-1 ${
-                executiveSummary.budget_utilization > 90 ? 'text-red-600'
-                  : executiveSummary.budget_utilization > 75 ? 'text-amber-600'
+                (executiveSummary.budget_utilization ?? 0) > 90 ? 'text-red-600'
+                  : (executiveSummary.budget_utilization ?? 0) > 75 ? 'text-amber-600'
                   : 'text-green-600'
               }`}>
-                {executiveSummary.budget_utilization.toFixed(1)}%
+                {(executiveSummary.budget_utilization ?? 0).toFixed(1)}%
               </p>
             </div>
           </div>
@@ -307,12 +307,12 @@ export default function Reports() {
                   <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(carbonReport.total_spend)}</p>
                 </div>
               </div>
-              {carbonReport.by_region.length > 0 && (
+              {(carbonReport.by_region ?? []).length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">By Region</p>
                   <div className="space-y-2">
-                    {carbonReport.by_region.slice(0, 6).map(r => {
-                      const maxCo2 = carbonReport.by_region[0]?.co2_kg || 1;
+                    {(carbonReport.by_region ?? []).slice(0, 6).map(r => {
+                      const maxCo2 = (carbonReport.by_region ?? [])[0]?.co2_kg || 1;
                       const pct = (r.co2_kg / maxCo2) * 100;
                       return (
                         <div key={r.region} className="flex items-center gap-3 text-sm">
@@ -327,12 +327,12 @@ export default function Reports() {
                   </div>
                 </div>
               )}
-              {carbonReport.trend.length > 1 && (
+              {(carbonReport.trend ?? []).length > 1 && (
                 <div className="mt-4">
                   <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">Monthly Trend</p>
                   <div className="flex items-end gap-1 h-16">
-                    {carbonReport.trend.map((t, i) => {
-                      const maxVal = Math.max(...carbonReport.trend.map(p => p.co2_kg), 1);
+                    {(carbonReport.trend ?? []).map((t, i) => {
+                      const maxVal = Math.max(...(carbonReport.trend ?? []).map(p => p.co2_kg), 1);
                       const h = (t.co2_kg / maxVal) * 100;
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
@@ -476,14 +476,14 @@ export default function Reports() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {comparison.by_service.length === 0 ? (
+                      {(comparison.by_service ?? []).length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-6 py-12 text-center text-sm text-slate-500">
                             No service data available for the selected periods.
                           </td>
                         </tr>
                       ) : (
-                        comparison.by_service.map((row, idx) => (
+                        (comparison.by_service ?? []).map((row, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-3 text-sm font-medium text-slate-900">{row.service}</td>
                             <td className="px-6 py-3 text-sm text-slate-700 text-right font-mono">{formatCurrency(row.current)}</td>

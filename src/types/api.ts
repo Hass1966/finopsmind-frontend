@@ -33,6 +33,7 @@ export interface CostSummary {
   start_date: string;
   end_date: string;
   by_service: CostBreakdownItem[];
+  by_provider: CostBreakdownItem[];
   previous_period_cost: number | null;
   change_pct: number | null;
 }

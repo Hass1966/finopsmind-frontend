@@ -146,9 +146,13 @@ export default function Dashboard() {
       }, 0) / budgets.length
     : 0;
 
-  // Derive provider data from service breakdown (group by provider if available)
-  // CostSummary doesn't include by_provider, so we leave this empty or derive from by_service
-  const providerData: { name: string; value: number; color: string }[] = [];
+  const providerData: { name: string; value: number; color: string }[] = costSummary
+    ? costSummary.by_provider.map((item) => ({
+        name: PROVIDER_LABELS[item.name] ?? item.name,
+        value: item.amount,
+        color: PROVIDER_COLORS[item.name] ?? '#6B7280',
+      }))
+    : [];
 
   const serviceData = costSummary
     ? costSummary.by_service

@@ -206,6 +206,16 @@ export function streamChat(
   return controller;
 }
 
+// Terraform
+export const getRecommendationTerraform = (id: string) =>
+  api.get<{ hcl: string }>(`/recommendations/${id}/terraform`);
+
+// Push to pipeline
+export const pushRemediationToPipeline = (
+  id: string,
+  data: { github_token: string; repo_owner: string; repo_name: string; base_branch: string },
+) => api.post<{ pr_url: string }>(`/remediations/${id}/push-to-pipeline`, data);
+
 // Settings
 export const getSettings = () => api.get<OrgSettings>('/settings');
 export const updateSettings = (data: Record<string, unknown>) => api.put<OrgSettings>('/settings', data);

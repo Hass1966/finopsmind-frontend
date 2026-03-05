@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lightbulb, Check, X, ArrowRight } from 'lucide-react';
+import { Lightbulb, Check, X, ArrowRight, FileCode, Copy, CheckCheck } from 'lucide-react';
 import {
   getRecommendations,
   getRecommendationSummary,
   updateRecommendationStatus,
   dismissRecommendation,
+  getRecommendationTerraform,
 } from '../lib/api';
 import type { Recommendation, RecommendationSummary } from '../types/api';
 import { formatCurrency, statusColor, providerIcon, cn } from '../lib/utils';
@@ -74,6 +75,12 @@ export default function Recommendations() {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
 
+  // Terraform viewer state
+  const [terraformRec, setTerraformRec] = useState<Recommendation | null>(null);
+  const [terraformCode, setTerraformCode] = useState('');
+  const [terraformLoading, setTerraformLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -120,6 +127,27 @@ export default function Recommendations() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const openTerraform = async (rec: Recommendation) => {
+    setTerraformRec(rec);
+    setTerraformCode('');
+    setTerraformLoading(true);
+    setCopied(false);
+    try {
+      const res = await getRecommendationTerraform(rec.id);
+      setTerraformCode(res.data.hcl);
+    } catch {
+      setTerraformCode('# Failed to load Terraform code.');
+    } finally {
+      setTerraformLoading(false);
+    }
+  };
+
+  const handleCopyTerraform = async () => {
+    await navigator.clipboard.writeText(terraformCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -405,12 +433,83 @@ export default function Recommendations() {
                           Implemented
                         </span>
                       )}
+                      <button
+                        onClick={() => openTerraform(rec)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200"
+                      >
+                        <FileCode className="w-4 h-4" />
+                        Terraform
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Terraform Code Modal */}
+      {terraformRec && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setTerraformRec(null)}
+          />
+          <div className="relative bg-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <FileCode className="w-5 h-5 text-violet-400" />
+                <div>
+                  <h3 className="text-sm font-semibold text-white">Terraform Configuration</h3>
+                  <p className="text-xs text-gray-400 truncate max-w-md">
+                    {terraformRec.resource_id || terraformRec.resource_type}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopyTerraform}
+                  disabled={terraformLoading || !terraformCode}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 border border-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {copied ? (
+                    <>
+                      <CheckCheck className="w-3.5 h-3.5 text-green-400" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      Copy
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setTerraformRec(null)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {/* Code */}
+            <div className="flex-1 overflow-auto p-6">
+              {terraformLoading ? (
+                <div className="flex items-center justify-center h-48">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-6 h-6 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin" />
+                    <span className="text-sm text-gray-400">Loading HCL...</span>
+                  </div>
+                </div>
+              ) : (
+                <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap break-words leading-relaxed">
+                  {terraformCode}
+                </pre>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
