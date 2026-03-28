@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+mport { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User } from '../types/api';
 import { getMe } from '../lib/api';
 
@@ -21,7 +21,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       getMe()
         .then((res) => setUser(res.data))
-        .catch(() => { localStorage.removeItem('token'); setToken(null); })
+        .catch((err: unknown) => {
+  	  const e = err as { response?: { status?: number } };
+  	  if (e?.response?.status === 401) {
+    		localStorage.removeItem('token');
+    		setToken(null);
+ 	  }
+	})
         .finally(() => setLoading(false));
     } else {
       setLoading(false);
