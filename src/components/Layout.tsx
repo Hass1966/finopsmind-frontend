@@ -3,7 +3,7 @@ import { Link, useLocation, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, DollarSign, AlertTriangle, Lightbulb, TrendingUp,
   Cloud, Shield, FileText, Settings, MessageSquare, Bell, LogOut, Menu,
-  X, ChevronDown, Wrench, BookOpen, Tag
+  X, ChevronDown, Wrench, BookOpen, Tag, Server, Brain, Bot, Upload
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -12,15 +12,20 @@ import { cn } from '../lib/utils';
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/agent', icon: Bot, label: 'AI Agent' },
   { path: '/budgets', icon: DollarSign, label: 'Budgets' },
   { path: '/anomalies', icon: AlertTriangle, label: 'Anomalies' },
   { path: '/recommendations', icon: Lightbulb, label: 'Recommendations' },
   { path: '/forecasts', icon: TrendingUp, label: 'Forecasts' },
   { path: '/providers', icon: Cloud, label: 'Cloud Providers' },
+  { path: '/upload-costs', icon: Upload, label: 'Upload Costs' },
   { path: '/remediations', icon: Wrench, label: 'Remediations' },
   { path: '/policies', icon: Shield, label: 'Policies' },
   { path: '/reports', icon: FileText, label: 'Reports' },
   { path: '/allocations', icon: Tag, label: 'Allocations' },
+  { path: '/inventory', icon: Server, label: 'Inventory' },
+  { path: '/knowledge', icon: Brain, label: 'Knowledge' },
+  { path: '/patterns', icon: BookOpen, label: 'Pattern Library' },
   { path: '/settings', icon: Settings, label: 'Settings' },
 ];
 

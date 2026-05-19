@@ -13,7 +13,12 @@ import Remediations from './pages/Remediations';
 import Policies from './pages/Policies';
 import Reports from './pages/Reports';
 import Allocations from './pages/Allocations';
+import PatternLibrary from './pages/PatternLibrary';
+import ResourceInventory from './pages/ResourceInventory';
+import KnowledgeManagement from './pages/KnowledgeManagement';
 import SettingsPage from './pages/SettingsPage';
+import AgentAnalysis from './pages/AgentAnalysis';
+import UploadCostReport from './pages/UploadCostReport';
 import type { ReactNode } from 'react';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
@@ -52,6 +57,11 @@ export default function App() {
             <Route path="/policies" element={<Policies />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/allocations" element={<Allocations />} />
+            <Route path="/patterns" element={<PatternLibrary />} />
+            <Route path="/inventory" element={<ResourceInventory />} />
+            <Route path="/knowledge" element={<KnowledgeManagement />} />
+            <Route path="/agent" element={<AgentAnalysis />} />
+            <Route path="/upload-costs" element={<UploadCostReport />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
         </Routes>

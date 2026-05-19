@@ -11,7 +11,7 @@ import type {
   Policy, PolicyViolation,
   ExecutiveSummary, CostComparison,
   OrgSettings, ChatResponse, ChatMessage, PaginatedResponse, User,
-  AiCostSummary, CarbonReport,
+  AiCostSummary, CarbonReport, UploadResult,
 } from '../types/api';
 
 const api = axios.create({ baseURL: '/api/v1' });
@@ -210,6 +210,12 @@ export function streamChat(
 export const getRecommendationTerraform = (id: string) =>
   api.get<{ hcl: string }>(`/recommendations/${id}/terraform`);
 
+// Outcome feedback
+export const recordRecommendationOutcome = (
+  id: string,
+  data: { outcome: string; dismiss_reason?: string }
+) => api.post(`/recommendations/${id}/outcome`, data);
+
 // Push to pipeline
 export const pushRemediationToPipeline = (
   id: string,
@@ -223,5 +229,38 @@ export const updateSettings = (data: Record<string, unknown>) => api.put<OrgSett
 // Allocations
 export const getAllocations = (params?: Record<string, string>) => api.get('/allocations', { params });
 export const getUntaggedResources = () => api.get('/allocations/untagged');
+
+// Resource Inventory
+export const getInventory = (params?: Record<string, string>) => api.get('/inventory', { params });
+export const getInventorySummary = () => api.get('/inventory/summary');
+
+// System Knowledge
+export const getKnowledge = () => api.get('/knowledge');
+export const createKnowledge = (data: { subject: string; content: string; source?: string }) =>
+  api.post('/knowledge', data);
+export const deleteKnowledge = (id: string) => api.delete(`/knowledge/${id}`);
+
+// Annual Forecast
+export const getAnnualForecast = () => api.get('/forecasts/annual');
+
+// Cost Report Upload
+export const uploadCostReport = (
+  file: File,
+  provider: string,
+  fileFormat: string,
+  onUploadProgress?: (pct: number) => void,
+) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('provider', provider);
+  formData.append('file_format', fileFormat);
+  return api.post<UploadResult>('/cost-reports/upload', formData, {
+    onUploadProgress: (e) => {
+      if (onUploadProgress && e.total) {
+        onUploadProgress(Math.round((e.loaded * 100) / e.total));
+      }
+    },
+  });
+};
 
 export default api;

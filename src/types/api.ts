@@ -376,3 +376,11 @@ export interface CarbonReport {
   by_region: RegionCarbon[];
   trend: CarbonTrendPoint[];
 }
+
+export interface UploadResult {
+  rows_imported: number;
+  rows_skipped: number;
+  date_range: { start: string; end: string } | null;
+  total_amount: number;
+  errors: string[];
+}
