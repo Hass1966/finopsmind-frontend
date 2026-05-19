@@ -10,9 +10,21 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts';
-import { getLatestForecast } from '../lib/api';
+import {
+  BarChart,
+  Bar,
+} from 'recharts';
+import { getLatestForecast, getAnnualForecast } from '../lib/api';
 import type { Forecast, ForecastPrediction } from '../types/api';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
+
+interface AnnualForecast {
+  monthly_projections: Array<{ month: string; amount: number }>;
+  annual_total: number;
+  growth_rate_pct: number;
+  has_seasonality: boolean;
+  confidence: string;
+}
 
 interface ChartDataPoint {
   date: string;
@@ -76,6 +88,7 @@ function CustomTooltip({
 
 export default function Forecasts() {
   const [forecast, setForecast] = useState<Forecast | null>(null);
+  const [annualForecast, setAnnualForecast] = useState<AnnualForecast | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,8 +97,14 @@ export default function Forecasts() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getLatestForecast();
+        const [res, annualRes] = await Promise.all([
+          getLatestForecast(),
+          getAnnualForecast().catch(() => ({ data: null })),
+        ]);
         setForecast(res.data);
+        if (annualRes.data && annualRes.data.monthly_projections) {
+          setAnnualForecast(annualRes.data);
+        }
       } catch (err) {
         console.error('Failed to fetch forecast:', err);
         setError('Failed to load forecast data. Please try again later.');
@@ -319,6 +338,56 @@ export default function Forecasts() {
           </div>
         )}
       </div>
+
+      {/* Annual Forecast */}
+      {annualForecast && (
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Annual Cost Projection</h2>
+              <p className="text-xs text-gray-500 mt-0.5">12-month forecast based on historical trends</p>
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">Annual Total: </span>
+                <span className="font-bold text-gray-900">{formatCurrency(annualForecast.annual_total)}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Growth: </span>
+                <span className={cn('font-bold', annualForecast.growth_rate_pct > 0 ? 'text-red-600' : 'text-green-600')}>
+                  {annualForecast.growth_rate_pct > 0 ? '+' : ''}{annualForecast.growth_rate_pct.toFixed(1)}%
+                </span>
+              </div>
+              {annualForecast.has_seasonality && (
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Seasonal</span>
+              )}
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={annualForecast.monthly_projections} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 12, fill: '#6B7280' }}
+                tickLine={false}
+                axisLine={{ stroke: '#E5E7EB' }}
+              />
+              <YAxis
+                tick={{ fontSize: 12, fill: '#6B7280' }}
+                tickLine={false}
+                axisLine={{ stroke: '#E5E7EB' }}
+                tickFormatter={(value: number) => formatCurrency(value)}
+              />
+              <Tooltip
+                formatter={(value) => [formatCurrency(Number(value)), 'Projected Cost']}
+                labelStyle={{ fontWeight: 600 }}
+                contentStyle={{ borderRadius: 12, border: '1px solid #E5E7EB' }}
+              />
+              <Bar dataKey="amount" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Prediction Details Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

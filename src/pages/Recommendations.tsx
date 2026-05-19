@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Lightbulb, Check, X, ArrowRight, FileCode, Copy, CheckCheck } from 'lucide-react';
+import { Lightbulb, Check, X, ArrowRight, FileCode, Copy, CheckCheck, ChevronDown, Shield } from 'lucide-react';
 import {
   getRecommendations,
   getRecommendationSummary,
   updateRecommendationStatus,
   dismissRecommendation,
   getRecommendationTerraform,
+  recordRecommendationOutcome,
 } from '../lib/api';
 import type { Recommendation, RecommendationSummary } from '../types/api';
 import { formatCurrency, statusColor, providerIcon, cn } from '../lib/utils';
@@ -18,6 +19,14 @@ const RECOMMENDATION_TYPES = [
   { value: 'savings_plan', label: 'Savings Plan' },
   { value: 'storage_optimization', label: 'Storage Optimization' },
   { value: 'scheduling', label: 'Scheduling' },
+  { value: 'idle_resource', label: 'Idle Resource' },
+  { value: 'serverless_migration', label: 'Serverless Migration' },
+  { value: 'graviton_migration', label: 'Graviton Migration' },
+  { value: 'os_licence_optimization', label: 'OS Licence' },
+  { value: 'scheduled_shutdown', label: 'Scheduled Shutdown' },
+  { value: 'autoscaling_candidate', label: 'Auto Scaling' },
+  { value: 'trusted_advisor', label: 'Trusted Advisor' },
+  { value: 'database_migration', label: 'Database Migration' },
 ];
 
 const STATUS_OPTIONS = [
@@ -28,20 +37,44 @@ const STATUS_OPTIONS = [
   { value: 'implemented', label: 'Implemented' },
 ];
 
+const DISMISS_REASONS = [
+  'Production resource',
+  'Already planned',
+  'Not applicable',
+  'Risk too high',
+  'Other',
+];
+
 function typeBadgeColor(type: string): string {
   switch (type) {
     case 'rightsizing':
       return 'bg-purple-50 text-purple-700 border-purple-200';
     case 'unused_resource':
+    case 'idle_resource':
       return 'bg-red-50 text-red-700 border-red-200';
     case 'reserved_instance':
+    case 'committed_use_discount':
       return 'bg-blue-50 text-blue-700 border-blue-200';
     case 'savings_plan':
       return 'bg-indigo-50 text-indigo-700 border-indigo-200';
     case 'storage_optimization':
+    case 'unattached_disk':
       return 'bg-amber-50 text-amber-700 border-amber-200';
     case 'scheduling':
+    case 'scheduled_shutdown':
       return 'bg-teal-50 text-teal-700 border-teal-200';
+    case 'serverless_migration':
+      return 'bg-cyan-50 text-cyan-700 border-cyan-200';
+    case 'graviton_migration':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    case 'os_licence_optimization':
+      return 'bg-orange-50 text-orange-700 border-orange-200';
+    case 'autoscaling_candidate':
+      return 'bg-sky-50 text-sky-700 border-sky-200';
+    case 'trusted_advisor':
+      return 'bg-violet-50 text-violet-700 border-violet-200';
+    case 'database_migration':
+      return 'bg-rose-50 text-rose-700 border-rose-200';
     default:
       return 'bg-gray-50 text-gray-700 border-gray-200';
   }
@@ -57,6 +90,19 @@ function indicatorLevel(level: string): { color: string; label: string } {
       return { color: 'bg-green-500', label: 'Low' };
     default:
       return { color: 'bg-gray-400', label: level || 'N/A' };
+  }
+}
+
+function confidenceBadge(confidence: string | null): { color: string; label: string } {
+  switch (confidence?.toLowerCase()) {
+    case 'high':
+      return { color: 'bg-green-100 text-green-700 border-green-200', label: 'High Confidence' };
+    case 'medium':
+      return { color: 'bg-yellow-100 text-yellow-700 border-yellow-200', label: 'Medium Confidence' };
+    case 'low':
+      return { color: 'bg-red-100 text-red-700 border-red-200', label: 'Low Confidence' };
+    default:
+      return { color: 'bg-gray-100 text-gray-600 border-gray-200', label: 'Unknown' };
   }
 }
 
@@ -80,6 +126,9 @@ export default function Recommendations() {
   const [terraformCode, setTerraformCode] = useState('');
   const [terraformLoading, setTerraformLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Dismiss dropdown state
+  const [dismissDropdown, setDismissDropdown] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -108,6 +157,7 @@ export default function Recommendations() {
   const handleAccept = async (id: string) => {
     setActionLoading(id);
     try {
+      await recordRecommendationOutcome(id, { outcome: 'accepted' });
       await updateRecommendationStatus(id, { status: 'accepted' });
       await fetchData();
     } catch (err) {
@@ -117,10 +167,12 @@ export default function Recommendations() {
     }
   };
 
-  const handleDismiss = async (id: string) => {
+  const handleDismiss = async (id: string, reason: string) => {
     setActionLoading(id);
+    setDismissDropdown(null);
     try {
-      await dismissRecommendation(id, { notes: '' });
+      await recordRecommendationOutcome(id, { outcome: 'dismissed', dismiss_reason: reason });
+      await dismissRecommendation(id, { notes: reason });
       await fetchData();
     } catch (err) {
       console.error('Failed to dismiss recommendation:', err);
@@ -296,6 +348,7 @@ export default function Recommendations() {
             const impact = indicatorLevel(rec.impact);
             const effort = indicatorLevel(rec.effort);
             const risk = indicatorLevel(rec.risk);
+            const confidence = confidenceBadge(rec.confidence);
             const isActioning = actionLoading === rec.id;
             const isActionable = rec.status === 'pending';
 
@@ -325,6 +378,16 @@ export default function Recommendations() {
                           )}
                         >
                           {rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}
+                        </span>
+                        {/* Confidence Badge */}
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                            confidence.color
+                          )}
+                        >
+                          <Shield className="w-3 h-3" />
+                          {confidence.label}
                         </span>
                       </div>
 
@@ -402,17 +465,33 @@ export default function Recommendations() {
                             <Check className="w-4 h-4" />
                             Accept
                           </button>
-                          <button
-                            onClick={() => handleDismiss(rec.id)}
-                            disabled={isActioning}
-                            className={cn(
-                              'inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                              'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                          <div className="relative">
+                            <button
+                              onClick={() => setDismissDropdown(dismissDropdown === rec.id ? null : rec.id)}
+                              disabled={isActioning}
+                              className={cn(
+                                'inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full',
+                                'bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed'
+                              )}
+                            >
+                              <X className="w-4 h-4" />
+                              Dismiss
+                              <ChevronDown className="w-3 h-3 ml-auto" />
+                            </button>
+                            {dismissDropdown === rec.id && (
+                              <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-20 py-1">
+                                {DISMISS_REASONS.map((reason) => (
+                                  <button
+                                    key={reason}
+                                    onClick={() => handleDismiss(rec.id, reason)}
+                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    {reason}
+                                  </button>
+                                ))}
+                              </div>
                             )}
-                          >
-                            <X className="w-4 h-4" />
-                            Dismiss
-                          </button>
+                          </div>
                         </>
                       )}
                       {rec.status === 'accepted' && (

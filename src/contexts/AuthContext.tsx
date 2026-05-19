@@ -1,4 +1,4 @@
-mport { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User } from '../types/api';
 import { getMe } from '../lib/api';
 
